@@ -38,6 +38,7 @@ io.on("connection", socket => {
     const r = roomState(roomName);
     const want = data && (data.as === "m" || data.as === "f") ? data.as : null;   // ?as=m / ?as=f 固定角色(10-27)
     if (want && !r[want]) role = want;
+    else if (!r.m && !r.f) role = Math.random() < 0.5 ? "m" : "f";   // 11-08 v2: the first visitor is the boy or the girl at random (Boyd, crit 5 Nov)
     else if (!r.m) role = "m"; else if (!r.f) role = "f"; else { socket.emit("full"); return; }
     r[role] = socket.id;
     socket.join(roomName);

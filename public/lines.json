@@ -352,5 +352,6 @@
  "endOthers": "Pages other people have left here:",
  "endEmpty": "No one has left a page here yet.",
  "endAgain": "press R to play again",
- "endBand": ""
+ "endBand": "",
+ "leave": "leave a memory"
 }

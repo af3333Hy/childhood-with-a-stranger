@@ -199,13 +199,9 @@ function draw() {
   else if (state === "ending") drawBook();
   else if (state === "leave") drawLeave();
   else if (state === "end") drawEnd();
-  if (CAM && state === "leave" && memSent && !memFadeT) {   // 11-08 v2:留言页两个选项也能用手 — V = again,张开手 = end
-    const gs = gestureStable();
-    if (gs === "scissors") leaveAgain(); else if (gs === "paper") endEnter();
-  }
   if (CAM && state === "ending" && !trans && bookOptionsOn()) {   // 10-31 ml5:结尾两个选项也能用手 — 剪刀(V) = again,布(张开手) = stay
     const gs = gestureStable();
-    if (gs === "scissors") { if (socket) socket.emit("restart"); bookAgainStart(); } else if (gs === "paper") bookStayChoose();
+    if (gs === "scissors") { if (socket) socket.emit("restart"); bookAgainStart(); } else if (gs === "paper") leaveEnter();   // 11-08 v2:张手 = 留下记忆
   }
   drawCorner();
 }
@@ -571,7 +567,7 @@ function mousePressed() {
   else if (state === "dialog" && !dlgDone) nextLine();                 // 点一下 = 这句跳过
   else if (state === "final") bookEnter();
   else if (state === "ending" && !bookOptionsOn()) bookSkip();
-  else if (state === "ending" && bookOptionsOn()) { if (hoverBtn === 0) { if (socket) socket.emit("restart"); bookAgainStart(); } else if (hoverBtn === 1) bookStayChoose(); }
+  else if (state === "ending" && bookOptionsOn()) { if (hoverBtn === 0) { if (socket) socket.emit("restart"); bookAgainStart(); } else if (hoverBtn === 1) leaveEnter(); }
   else if (state === "leave") leaveClick();
 }
 function rpsReset() { gestNow = null; rpsPhase = "count"; rpsT = millis(); myChoice = null; partnerChoice = null; sent = false; partnerSent = false; pendingBoth = null; }
@@ -583,7 +579,6 @@ function restart() { leaveReset(); bookStay = false; bookAgainT = 0; if (bookAud
 function keyPressed() {
   sfxCtxGet();
   if (state === "leave" && memInp && document.activeElement === memInp.elt) { if (keyCode === ENTER) leaveSend(); return; }   // 11-08:在输入框里打字不触发快捷键
-  if (state === "leave" && memSent && !memFadeT) { if (key === "6") leaveAgain(); else if (key === "2") endEnter(); }
   if (key === "p" || key === "P") { setPaused(!paused); return; }
   if (paused) return;
   if (state === "ending" && !bookOptionsOn() && !bookStay && !bookAgainT && !"rRcC".includes(key)) { bookSkip(); return; }
@@ -595,7 +590,7 @@ function keyPressed() {
   if (state === "rps" && rpsPhase === "count" && !myChoice && "123".includes(key)) { myChoice = RPS[parseInt(key) - 1]; sendChoice(); }   // 1 石头 2 布 3 剪刀(ml5 接上后由它来设 myChoice)
   if (state === "dialog" && !dlgDone && key === " ") nextLine();
   if (state === "ending" && bookOptionsOn() && key === "6") { if (socket) socket.emit("restart"); bookAgainStart(); }   // V = again
-  if (state === "ending" && bookOptionsOn() && key === "2") bookStayChoose();                                      // open hand = stay
+  if (state === "ending" && bookOptionsOn() && key === "2") leaveEnter();                                           // open hand = leave a memory (11-08 v2)
 }
 
 // =====================================================================
@@ -922,7 +917,6 @@ function drawBook() {
   background(0);
   const L = bookLayout(), pw = L.pw, bh = L.bh, x0 = L.x0, y0 = L.y0;
   const sec = (millis() - holdStart) / 1000 / FAST, seq = bookSeq(), step = T_BK_HOLD + T_BK_FLIP;
-  if (!bookStay && !bookAgainT && sec >= bookTotal()) { leaveEnter(); return; }   // 11-08 v2:翻完书直接进留言页
   let i = min(floor(sec / step), seq.length - 1), lt = sec - i * step;
   const cur = seq[i], nxt = seq[i + 1], flipping = nxt !== undefined && lt > T_BK_HOLD, k = flipping ? opEase((lt - T_BK_HOLD) / T_BK_FLIP) : 0;
   // cover
@@ -953,7 +947,7 @@ function drawBook() {
       push(); imageMode(CORNER); tint(255, 255 * optA * (over ? 1 : 0.8)); image(gestures[b.id === "again" ? 5 : 1], b.x, b.y, b.w, b.h); noTint();
       if (over) { noFill(); stroke(255, 150 * optA); strokeWeight(2); rect(b.x - 4, b.y - 4, b.w + 8, b.h + 8); }
       noStroke(); fill(over ? 230 : 120, 255 * optA); textAlign(CENTER, CENTER); textSize(13);
-      text(b.id === "again" ? `${lines.again || "again"} · ${GESTURE_NAMES[5]}` : `${lines.stay || "stay"} · ${GESTURE_NAMES[1]}`, b.x + b.w / 2, b.y + b.h + 12); pop();
+      text(b.id === "again" ? `${lines.again || "again"} · ${GESTURE_NAMES[5]}` : `${lines.leave || "leave a memory"} · ${GESTURE_NAMES[1]}`, b.x + b.w / 2, b.y + b.h + 12); pop();
     }
   }
   bandFont = FONT_CHILD;
@@ -1001,10 +995,11 @@ function leaveSend() {
   if (memSent) return;
   const t = memInp.value().replace(/\s+/g, " ").trim(); if (!t) return;
   memSent = true; memInp.hide(); gestNow = null;
+  setTimeout(() => { if (state === "leave") endEnter(); }, 2600 * FAST);
   fetch("memory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t, room: Q.get("room") || "", role }) }).catch(() => {});
   memOthers.unshift(t);
 }
-function leaveSkip() { if (memSent) return; memSent = true; memSkipped = true; memInp.hide(); gestNow = null; }
+function leaveSkip() { if (memSent) return; memSent = true; memSkipped = true; memInp.hide(); gestNow = null; setTimeout(() => { if (state === "leave") endEnter(); }, 1500 * FAST); }
 function leaveClick() {
   const R = leaveRects();
   if (!memSent) { if (overRect(R.send)) leaveSend(); else if (overRect(R.skip)) leaveSkip(); return; }
@@ -1028,7 +1023,7 @@ function drawLeave() {
     push(); textFont(FONT_CHILD); textAlign(CENTER, CENTER); noStroke(); fill(COVER[0], COVER[1], COVER[2], 255 * k); textSize(16); text(lines.leaveSend || "send", R.send.x + R.send.w / 2, R.send.y + R.send.h / 2);
     fill(overK ? 200 : 110, 255 * k); textSize(13); text(lines.leaveSkip || "skip", R.skip.x + R.skip.w / 2, R.skip.y + R.skip.h / 2); pop();
     cursor(overS || overK ? HAND : ARROW);
-  } else {
+  } else if (false) {
     for (const id of ["again", "end"]) {
       const b = R[id], over = !memFadeT && overRect(b);
       push(); imageMode(CORNER); tint(255, 255 * (over ? 1 : 0.8)); image(gestures[id === "again" ? 5 : 1], b.x, b.y, b.w, b.h); noTint();
@@ -1037,7 +1032,7 @@ function drawLeave() {
       text(id === "again" ? `${lines.again || "again"} · ${GESTURE_NAMES[5]}` : `${lines.end || "end"} · ${GESTURE_NAMES[1]}`, b.x + b.w / 2, b.y + b.h + 12); pop();
     }
     cursor(overRect(R.again) || overRect(R.end) ? HAND : ARROW);
-  }
+  } else cursor(ARROW);
   bandFont = FONT_CHILD; drawBand(this, memSent ? "" : (lines.leaveBand || ""), "");
   if (memFadeT) {   // again: fade to black, then back to the choosing screen
     const kk = (millis() - memFadeT) / 1000 / FAST;
