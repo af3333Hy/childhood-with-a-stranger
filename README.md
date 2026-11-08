@@ -54,4 +54,4 @@ Faces, hand gestures, single-figure actions, the 16 pair scenes and the silhouet
 - v18 (11-01) ml5 handPose, local model, rounds sped up.
 - v21 (11-02) frozen for the crit: sound effects, looser gesture rules, countdown fix.
 - v22 and v23 (11-03) pause key, faster page flips, click to skip the book.
-- v2 (planned, after the 5 November crit): a final page where the player leaves one childhood memory of their own, then Again or End.
+- v24 and v25 (8 November, after the crit): on the last page the open hand means leave a memory; the player writes one childhood memory of their own, it is kept in memories.json, and the end page shows the pages other people have left. The first visitor is the boy or the girl at random.
