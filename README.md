@@ -5,7 +5,13 @@ ARTD6232 Creative Technologies, Project 1 (networked presence). Yi Han, 38188163
 Two strangers each hold a feeling in their hand. Round by round, their two feelings pick a page of a childhood picture book that neither of them lived. The book ends with a memory bank of the pages they wrote together.
 
 Live (two players, same room name): `https://43-165-7-157.sslip.io/?room=yourname`
+Video (60 s): https://af3333hy.github.io/creattech_websites/assets/video/ct1_p1_final_60s.mp4
+Portfolio page: https://af3333hy.github.io/creattech_websites/ (Creative Tech 1 > Projects)
 Single player test: add `&solo=1`. Skip the opening book: add `&skip=1`.
+
+## In 100 words
+
+A childhood, with a stranger is a two-player picture book. Two strangers each show one hand to the webcam; ml5 reads it as a feeling, a Socket.io server pairs the two feelings, and together they open one page of a childhood that neither of them lived: hand-drawn pixel silhouettes with a caption. After three rounds the pages are bound into a book. Childhood is not found, it is co-written in the present by two people out of shadows. After the crit I added a last page where the player leaves one memory of their own, so the next two strangers find a story that is partly theirs.
 
 ## How it works
 
