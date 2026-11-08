@@ -1,0 +1,342 @@
+{
+ "_note": "v6 book version (2026-10-28 night). Every text on screen lives here. No rules, no 'stranger', no 'make up': the screens are the remaining pages of the picture book and the hands fill in the blanks. Tokens: {stem} = this round's opening words, {meRole}/{otherRole} = boy/girl, {me}/{other} = my/their feeling word, {mFeel}/{fFeel} = the boy's/the girl's feeling, {round} = page number.",
+ "questions": [
+  "Did you have someone to play with, as a child?",
+  "Do you still remember their face?",
+  "Shall we make a new one, with someone new?"
+ ],
+ "intro": [],
+ "role": {
+  "m": "You are the boy.",
+  "f": "You are the girl."
+ },
+ "title": "",
+ "emo": {
+  "calm": "calm",
+  "smile": "happy",
+  "down": "sad",
+  "cry": "sad",
+  "surprised": "surprised"
+ },
+ "round": [
+  "That morning,",
+  "That afternoon,",
+  "When it was time to go home,"
+ ],
+ "choose": "{stem} the {meRole} felt ___",
+ "home": "show one hand to fill the blank",
+ "waiting": "{stem} the {meRole} felt {me}, and the {otherRole} felt ___",
+ "reveal": "{stem} the boy felt {mFeel}, and the girl felt {fFeel}.",
+ "faceNote": [
+  "",
+  "",
+  ""
+ ],
+ "duo": "",
+ "pair": {
+  "calm_calm": "They read side by side and said nothing for a whole afternoon.",
+  "smile_smile": "They found a doll in the grass and gave it a name.",
+  "down_cry": "The truck left with her on it. He ran until the road ended.",
+  "smile_calm": "He blew bubbles. She counted them until they were gone.",
+  "calm_smile": "She danced on the step. He was the only audience.",
+  "down_calm": "He lost the game. She stood there until he stopped sulking.",
+  "calm_cry": "She cried. He did not know what to say, so he stayed.",
+  "smile_cry": "She was sad. He stood on his hands until she looked up.",
+  "down_smile": "It rained. She held the umbrella over the wrong person.",
+  "surprised_surprised": "They stole the boxes from the shop and ran. Nobody chased them.",
+  "surprised_smile": "The kite went up on the first try. Neither of them expected it.",
+  "smile_surprised": "He gave her a pinwheel he had made. She did not know where to look.",
+  "surprised_cry": "She fell off the wall. He got there before the grown-ups did.",
+  "down_surprised": "He said he was not going. She pulled him up anyway.",
+  "surprised_calm": "She walked the beam without looking down. He held his breath.",
+  "calm_surprised": "He rode past on the new bike. She pretended not to care."
+ },
+ "keep": {
+  "ask": "Keep this page?",
+  "yes": "keep",
+  "no": "tear out",
+  "kept": "Page kept.",
+  "gone": "Torn out. It never happened."
+ },
+ "strip": "Their day.",
+ "ending": "The memory isn't over yet.",
+ "endingDone": "The memory is over.",
+ "again": "again",
+ "stay": "stay",
+ "rounds": [
+  {
+   "title": "A summer afternoon",
+   "note": ""
+  },
+  {
+   "title": "The night the lights went out",
+   "note": ""
+  },
+  {
+   "title": "The day out",
+   "note": ""
+  },
+  {
+   "title": "Moving day",
+   "note": "This time, winning doesn't help."
+  }
+ ],
+ "scenes": {
+  "1": {
+   "lines": [
+    {
+     "who": "f",
+     "en": "Come down! I saw them first!",
+     "voice": "01_01_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "Come up then. Oh, you can't climb.",
+     "voice": "01_02_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "I'm telling your grandma!",
+     "voice": "01_03_f.mp3"
+    }
+   ],
+   "sub": "That summer, he always got the mulberries first."
+  },
+  "2": {
+   "lines": [
+    {
+     "who": "m",
+     "en": "Watch this!",
+     "voice": "02_04_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "...Same distance.",
+     "voice": "02_05_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "Again!",
+     "voice": "02_06_m.mp3"
+    }
+   ],
+   "sub": "We tried all afternoon. Nobody won."
+  },
+  "3": {
+   "lines": [
+    {
+     "who": "f",
+     "en": "Look, mine is flying!",
+     "voice": "03_07_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "Mine is stuck in that tree again.",
+     "voice": "03_08_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "Go get it. You're the best climber, right?",
+     "voice": "03_09_f.mp3"
+    }
+   ],
+   "sub": "That tree helped her win once, too."
+  },
+  "4": {
+   "lines": [
+    {
+     "who": "f",
+     "en": "There's one ice pop left...",
+     "voice": "04_10_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "I already ate it.",
+     "voice": "04_11_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "That was mine!",
+     "voice": "04_12_f.mp3"
+    }
+   ],
+   "sub": "The last ice pop melted in his mouth."
+  },
+  "5": {
+   "lines": [
+    {
+     "who": "f",
+     "en": "No lights. So many stars.",
+     "voice": "05_13_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "The brightest one is mine.",
+     "voice": "05_14_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "Then the one next to it is mine.",
+     "voice": "05_15_f.mp3"
+    }
+   ],
+   "sub": "The whole street was dark. Only the sky was bright."
+  },
+  "6": {
+   "lines": [
+    {
+     "who": "f",
+     "en": "One, two, three... Here I come!",
+     "voice": "06_16_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "She can't see me...",
+     "voice": "06_17_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "Found you! I can see your feet!",
+     "voice": "06_18_f.mp3"
+    }
+   ],
+   "sub": "One pull of the curtain, and he had nowhere to hide."
+  },
+  "7": {
+   "lines": [
+    {
+     "who": "f",
+     "en": "I don't want to go.",
+     "voice": "07_19_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "Look at me! A handstand!",
+     "voice": "07_20_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "...Your face is so red.",
+     "voice": "07_21_f.mp3"
+    }
+   ],
+   "sub": "He won. But tomorrow she was leaving."
+  },
+  "8": {
+   "lines": [
+    {
+     "who": "m",
+     "en": "Wow, it's so big!",
+     "voice": "08_22_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "...It's here for my family.",
+     "voice": "08_23_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "...",
+     "voice": null
+    }
+   ],
+   "sub": "When the truck came in, nobody said a word."
+  },
+  "9": {
+   "lines": [
+    {
+     "who": "f",
+     "en": "Go home!",
+     "voice": "09_25_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "I can run faster than it!",
+     "voice": "09_26_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "...I'll come back.",
+     "voice": "09_27_f.mp3"
+    }
+   ],
+   "sub": "That was the last time she won."
+  },
+  "10": {
+   "lines": [
+    {
+     "who": "f",
+     "en": "My swing broke!",
+     "voice": "10_28_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "Look at me! I can touch the leaves!",
+     "voice": "10_29_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "You didn't even come down to help me...",
+     "voice": "10_30_f.mp3"
+    }
+   ],
+   "sub": "That day, he swung the highest. He didn't hear her crying."
+  },
+  "11": {
+   "lines": [
+    {
+     "who": "f",
+     "en": "It's raining!",
+     "voice": "11_31_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "Quick, grab a lotus leaf!",
+     "voice": "11_32_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "We look like two frogs.",
+     "voice": "11_33_f.mp3"
+    }
+   ],
+   "sub": "Two little frogs under two lotus leaves, waiting for the rain to stop."
+  },
+  "12": {
+   "lines": [
+    {
+     "who": "f",
+     "en": "We said the loser plays the mum!",
+     "voice": "12_34_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "I don't want to wear a dress...",
+     "voice": "12_35_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "Mums have to wear dresses!",
+     "voice": "12_36_f.mp3"
+    }
+   ],
+   "sub": "That afternoon, he played the mum."
+  }
+ },
+ "rps": {
+  "band": "Rock, paper, scissors —",
+  "small": "show one hand · the winner is happy, the loser is sad, a draw is quiet",
+  "win": "You won.",
+  "lose": "You lost.",
+  "draw": "A draw.",
+  "waiting": "waiting for the other hand...",
+  "showhand": "show your hand",
+  "you": "you",
+  "other": "the other person",
+  "rock": "rock",
+  "paper": "paper",
+  "scissors": "scissors",
+  "ready": "get your hand ready"
+ },
+ "_note_v7": "10-30: rounds/scenes/rps added for the v7 middle (rock-paper-scissors -> stage + bubbles -> the page). Subtitles are the script's; Yi Han may rewrite any English here."
+}

@@ -1,0 +1,7 @@
+node_modules/
+*.bak_*
+*.bak
+流程截图_v6/
+打包单人分享版.py
+启动本机服务器.bat
+.DS_Store
