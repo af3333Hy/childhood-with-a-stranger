@@ -197,6 +197,12 @@ function draw() {
   else if (state === "merge") drawMerge(this);
   else if (state === "final") drawFinal();
   else if (state === "ending") drawBook();
+  else if (state === "leave") drawLeave();
+  else if (state === "end") drawEnd();
+  if (CAM && state === "leave" && memSent && !memFadeT) {   // 11-08 v2:留言页两个选项也能用手 — V = again,张开手 = end
+    const gs = gestureStable();
+    if (gs === "scissors") leaveAgain(); else if (gs === "paper") endEnter();
+  }
   if (CAM && state === "ending" && !trans && bookOptionsOn()) {   // 10-31 ml5:结尾两个选项也能用手 — 剪刀(V) = again,布(张开手) = stay
     const gs = gestureStable();
     if (gs === "scissors") { if (socket) socket.emit("restart"); bookAgainStart(); } else if (gs === "paper") bookStayChoose();
@@ -566,15 +572,18 @@ function mousePressed() {
   else if (state === "final") bookEnter();
   else if (state === "ending" && !bookOptionsOn()) bookSkip();
   else if (state === "ending" && bookOptionsOn()) { if (hoverBtn === 0) { if (socket) socket.emit("restart"); bookAgainStart(); } else if (hoverBtn === 1) bookStayChoose(); }
+  else if (state === "leave") leaveClick();
 }
 function rpsReset() { gestNow = null; rpsPhase = "count"; rpsT = millis(); myChoice = null; partnerChoice = null; sent = false; partnerSent = false; pendingBoth = null; }
 function advance() {                                          // 这一页拼完:下一轮,或四轮完进连环画
   if (round < ROUNDS) { round++; rpsReset(); startTrans(drawMerge, drawRps, "rps"); }
   else startTrans(drawMerge, null, "final");
 }
-function restart() { bookStay = false; bookAgainT = 0; if (bookAudio) bookAudio.pause(); round = 1; history = []; myChoice = null; partnerChoice = null; sent = false; partnerSent = false; trans = null; newlyLit = new Set(); startRps(); }
+function restart() { leaveReset(); bookStay = false; bookAgainT = 0; if (bookAudio) bookAudio.pause(); round = 1; history = []; myChoice = null; partnerChoice = null; sent = false; partnerSent = false; trans = null; newlyLit = new Set(); startRps(); }
 function keyPressed() {
   sfxCtxGet();
+  if (state === "leave" && memInp && document.activeElement === memInp.elt) { if (keyCode === ENTER) leaveSend(); return; }   // 11-08:在输入框里打字不触发快捷键
+  if (state === "leave" && memSent && !memFadeT) { if (key === "6") leaveAgain(); else if (key === "2") endEnter(); }
   if (key === "p" || key === "P") { setPaused(!paused); return; }
   if (paused) return;
   if (state === "ending" && !bookOptionsOn() && !bookStay && !bookAgainT && !"rRcC".includes(key)) { bookSkip(); return; }
@@ -913,6 +922,7 @@ function drawBook() {
   background(0);
   const L = bookLayout(), pw = L.pw, bh = L.bh, x0 = L.x0, y0 = L.y0;
   const sec = (millis() - holdStart) / 1000 / FAST, seq = bookSeq(), step = T_BK_HOLD + T_BK_FLIP;
+  if (!bookStay && !bookAgainT && sec >= bookTotal()) { leaveEnter(); return; }   // 11-08 v2:翻完书直接进留言页
   let i = min(floor(sec / step), seq.length - 1), lt = sec - i * step;
   const cur = seq[i], nxt = seq[i + 1], flipping = nxt !== undefined && lt > T_BK_HOLD, k = flipping ? opEase((lt - T_BK_HOLD) / T_BK_FLIP) : 0;
   // cover
@@ -953,4 +963,103 @@ function drawBook() {
     noStroke(); fill(0, 255 * min(1, k / 0.8)); rect(0, 0, width, height);
     if (k >= T_BK_AGAIN) { bookAgainT = 0; restart(); }
   }
+}
+
+
+// =====================================================================
+// v2 (2026-11-08, after the 5 November crit): LEAVE YOUR MEMORY
+// After the book has flipped through, one page asks the player for one childhood memory of their own.
+// It is sent to the server (memories.json) and will become material for the next pages of this story.
+// Then: again (V / key 6 / click) = play another round, end (open hand / key 2 / click) = the end page,
+// which shows the pages other people left here. The book no longer stays on screen.
+// =====================================================================
+let memInp = null, memSent = false, memSkipped = false, memFadeT = 0, memOthers = [], memHover = -1, leaveT = 0, memEndT = 0;
+const T_LEAVE_FADE = 1.2;
+function leaveReset() { memSent = false; memSkipped = false; memFadeT = 0; memEndT = 0; memHover = -1; if (memInp) memInp.hide(); }
+function leaveEnter() {
+  state = "leave"; leaveT = millis(); leaveReset(); gestNow = null;
+  if (bookAudio && !bookAudio.paused) { const a = bookAudio; let v = a.volume; const id = setInterval(() => { v -= 0.04; if (v <= 0) { a.pause(); clearInterval(id); } else a.volume = v; }, 60); }
+  if (!memInp) {
+    memInp = createInput(""); memInp.attribute("maxlength", "140");
+    memInp.style("font-family", FONT_CHILD); memInp.style("font-size", "18px"); memInp.style("padding", "8px 12px");
+    memInp.style("border", "none"); memInp.style("border-radius", "6px"); memInp.style("outline", "none");
+    memInp.style("background", `rgb(${CREAM[0]},${CREAM[1]},${CREAM[2]})`); memInp.style("color", `rgb(${COVER[0]},${COVER[1]},${COVER[2]})`);
+    memInp.style("box-sizing", "border-box");
+  }
+  memInp.attribute("placeholder", lines.leaveHint || "one sentence is enough");
+  memInp.value(""); memInp.show(); setTimeout(() => { if (state === "leave" && memInp) memInp.elt.focus(); }, 400);
+  fetch("memories").then(r => r.json()).then(j => { memOthers = j.memories || []; }).catch(() => {});
+}
+function leaveRects() {
+  const w = min(520, width * 0.6), x = width / 2 - w / 2, y = height * 0.46;
+  const s = 60, by = height * 0.58;
+  return { box: { x, y, w, h: 40 }, send: { x: width / 2 - 60, y: y + 60, w: 120, h: 36 }, skip: { x: width / 2 - 40, y: y + 110, w: 80, h: 24 },
+           again: { x: width / 2 - s - 30, y: by, w: s, h: s }, end: { x: width / 2 + 30, y: by, w: s, h: s } };
+}
+const overRect = b => mouseX > b.x && mouseX < b.x + b.w && mouseY > b.y && mouseY < b.y + b.h;
+function leaveSend() {
+  if (memSent) return;
+  const t = memInp.value().replace(/\s+/g, " ").trim(); if (!t) return;
+  memSent = true; memInp.hide(); gestNow = null;
+  fetch("memory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t, room: Q.get("room") || "", role }) }).catch(() => {});
+  memOthers.unshift(t);
+}
+function leaveSkip() { if (memSent) return; memSent = true; memSkipped = true; memInp.hide(); gestNow = null; }
+function leaveClick() {
+  const R = leaveRects();
+  if (!memSent) { if (overRect(R.send)) leaveSend(); else if (overRect(R.skip)) leaveSkip(); return; }
+  if (memFadeT) return;
+  if (overRect(R.again)) leaveAgain(); else if (overRect(R.end)) endEnter();
+}
+function leaveAgain() { if (memFadeT) return; memFadeT = millis(); if (socket) socket.emit("restart"); }
+function endEnter() { state = "end"; memEndT = millis(); if (memInp) memInp.hide(); gestNow = null; }
+function drawLeave() {
+  background(0);
+  const k = min(1, (millis() - leaveT) / 1000 / FAST / T_LEAVE_FADE), R = leaveRects();
+  push(); textFont(FONT_CHILD); textAlign(CENTER, CENTER); noStroke();
+  fill(235, 255 * k); textSize(max(26, min(40, width / 28))); text(lines.leaveTitle || "Leave your memory", width / 2, height * 0.2);
+  fill(190, 255 * k); textSize(max(15, min(20, width / 60)));
+  text(memSent ? (memSkipped ? (lines.leaveSkipped || "That's fine. Thank you for playing.") : (lines.leaveThanks || "Thank you. Your memory is kept.")) : (lines.leaveText || "Share one childhood memory of yours. We will turn it into a page of this story."), width * 0.15, height * 0.27, width * 0.7, 90);
+  pop();
+  if (!memSent) {
+    memInp.position(R.box.x, R.box.y).size(R.box.w, R.box.h); memInp.style("opacity", String(k));
+    const overS = overRect(R.send), overK = overRect(R.skip);
+    noStroke(); fill(CREAM[0], CREAM[1], CREAM[2], 255 * k * (overS ? 1 : 0.85)); rect(R.send.x, R.send.y, R.send.w, R.send.h, 6);
+    push(); textFont(FONT_CHILD); textAlign(CENTER, CENTER); noStroke(); fill(COVER[0], COVER[1], COVER[2], 255 * k); textSize(16); text(lines.leaveSend || "send", R.send.x + R.send.w / 2, R.send.y + R.send.h / 2);
+    fill(overK ? 200 : 110, 255 * k); textSize(13); text(lines.leaveSkip || "skip", R.skip.x + R.skip.w / 2, R.skip.y + R.skip.h / 2); pop();
+    cursor(overS || overK ? HAND : ARROW);
+  } else {
+    for (const id of ["again", "end"]) {
+      const b = R[id], over = !memFadeT && overRect(b);
+      push(); imageMode(CORNER); tint(255, 255 * (over ? 1 : 0.8)); image(gestures[id === "again" ? 5 : 1], b.x, b.y, b.w, b.h); noTint();
+      if (over) { noFill(); stroke(255, 150); strokeWeight(2); rect(b.x - 4, b.y - 4, b.w + 8, b.h + 8); }
+      noStroke(); fill(over ? 230 : 120); textAlign(CENTER, CENTER); textSize(13);
+      text(id === "again" ? `${lines.again || "again"} · ${GESTURE_NAMES[5]}` : `${lines.end || "end"} · ${GESTURE_NAMES[1]}`, b.x + b.w / 2, b.y + b.h + 12); pop();
+    }
+    cursor(overRect(R.again) || overRect(R.end) ? HAND : ARROW);
+  }
+  bandFont = FONT_CHILD; drawBand(this, memSent ? "" : (lines.leaveBand || ""), "");
+  if (memFadeT) {   // again: fade to black, then back to the choosing screen
+    const kk = (millis() - memFadeT) / 1000 / FAST;
+    noStroke(); fill(0, 255 * min(1, kk / 0.8)); rect(0, 0, width, height);
+    if (kk >= 1.6) { memFadeT = 0; restart(); }
+  }
+}
+function drawEnd() {
+  background(0); cursor(ARROW);
+  const k = min(1, (millis() - memEndT) / 1000 / FAST / T_LEAVE_FADE);
+  push(); textFont(FONT_CHILD); textAlign(CENTER, CENTER); noStroke();
+  fill(235, 255 * k); textSize(max(26, min(40, width / 28))); text(lines.endTitle || "The end.", width / 2, height * 0.16);
+  const others = memOthers.slice(0, 6);
+  fill(150, 255 * k); textSize(max(14, min(18, width / 70))); text(others.length ? (lines.endOthers || "Pages other people have left here:") : (lines.endEmpty || "No one has left a page here yet."), width / 2, height * 0.26);
+  const w = min(640, width * 0.72), x = width / 2 - w / 2; let y = height * 0.33;
+  for (const [i, t] of others.entries()) {
+    const a = 255 * k * max(0, min(1, (millis() - memEndT) / 1000 / FAST - 0.3 * i));
+    noStroke(); fill(CREAM[0], CREAM[1], CREAM[2], a * 0.92); rect(x, y, w, 44, 5);
+    fill(COVER[0], COVER[1], COVER[2], a); textAlign(LEFT, CENTER); textSize(16); text(t, x + 16, y + 2, w - 32, 40);
+    y += 54;
+  }
+  fill(90, 255 * k); textAlign(CENTER, CENTER); textSize(13); text(lines.endAgain || "press R to play again", width / 2, contentH() - 30);
+  pop();
+  bandFont = FONT_CHILD; drawBand(this, lines.endBand || "", "");
 }

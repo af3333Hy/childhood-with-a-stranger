@@ -338,5 +338,19 @@
   "scissors": "scissors",
   "ready": "get your hand ready"
  },
- "_note_v7": "10-30: rounds/scenes/rps added for the v7 middle (rock-paper-scissors -> stage + bubbles -> the page). Subtitles are the script's; Yi Han may rewrite any English here."
+ "_note_v7": "10-30: rounds/scenes/rps added for the v7 middle (rock-paper-scissors -> stage + bubbles -> the page). Subtitles are the script's; Yi Han may rewrite any English here.",
+ "leaveTitle": "Leave your memory",
+ "leaveText": "Share one childhood memory of yours. We will turn it into a page of this story.",
+ "leaveHint": "one sentence is enough",
+ "leaveSend": "send",
+ "leaveSkip": "skip",
+ "leaveThanks": "Thank you. Your memory is kept. It will become a page for the next two strangers.",
+ "leaveSkipped": "That's fine. Thank you for playing.",
+ "leaveBand": "",
+ "end": "end",
+ "endTitle": "The end.",
+ "endOthers": "Pages other people have left here:",
+ "endEmpty": "No one has left a page here yet.",
+ "endAgain": "press R to play again",
+ "endBand": ""
 }

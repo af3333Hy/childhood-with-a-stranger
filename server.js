@@ -6,6 +6,18 @@ const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => console.log("P1 server on port " + PORT));
+// 11-08 v2: memories left by players (one sentence each) -> memories.json next to this file
+const fs = require("fs"), path = require("path");
+const MEM = path.join(__dirname, "memories.json");
+function readMem() { try { return JSON.parse(fs.readFileSync(MEM, "utf8")); } catch (e) { return []; } }
+app.use(express.json({ limit: "4kb" }));
+app.get("/memories", (q, s) => s.json({ memories: readMem().slice(-30).reverse().map(x => x.text) }));
+app.post("/memory", (q, s) => {
+  const t = String((q.body && q.body.text) || "").replace(/\s+/g, " ").trim().slice(0, 140);
+  if (!t) return s.status(400).json({ ok: false });
+  const m = readMem(); m.push({ t: new Date().toISOString(), room: String((q.body && q.body.room) || "").slice(0, 40), role: q.body && q.body.role === "f" ? "f" : "m", text: t });
+  fs.writeFileSync(MEM, JSON.stringify(m, null, 1)); console.log("memory:", t); s.json({ ok: true, n: m.length });
+});
 app.use(express.static("public", { etag: false, maxAge: 0, setHeaders: r => r.setHeader("Cache-Control", "no-store") }));
 
 const io = require("socket.io")(server);
