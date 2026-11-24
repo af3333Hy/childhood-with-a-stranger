@@ -38,6 +38,27 @@ const src = p => (ASSETS && ASSETS[p]) || p;
 let faces = { m: {}, f: {} }, acts = { m: {}, f: {} }, pairs = {}, pairsColour = {}, gestures = [], lines = {};
 let role = "m";                 // me; the partner is the other one
 const other = () => (role === "m" ? "f" : "m");
+// ---- v3 (2026-11-24, after Boyd's crit: "a boy and a girl" is a preset) ----
+// pairType: mf = a boy and a girl / mm = two boys / ff = two girls. The code still calls the two seats "m" and "f":
+// in mm the "f" seat is the second boy, in ff the "m" seat is the first girl and the "f" seat is the second girl.
+let pairType = "mf", srvRole = "m", netSwap = false;
+const PAIRS_Q = Q.get("pairs") ? Q.get("pairs").split(",") : null;              // ?pairs=mf,mm,ff,mf  one pair per round (for the demo video)
+const OUTS_Q = Q.get("outs") ? Q.get("outs").split(",").map(Number) : null;     // ?outs=0,0,1,2      forced results per round (solo demo only)
+const pt = r => (PAIRS_Q && PAIRS_Q[(r || round) - 1]) || pairType;
+const EMO_M = { calm: "calm", smile: "smile", down: "down", cry: "down", surprised: "surprised" };
+const EMO_F = { calm: "calm", smile: "smile", down: "cry", cry: "cry", surprised: "surprised" };
+const EMO_M2 = { calm: "calm", smile: "smile", down: "down", cry: "down", surprised: "calm" }, EMO_F2 = { calm: "calm", smile: "smile", down: "cry", cry: "cry", surprised: "calm" };
+let faces2 = { m: {}, f: {} };                                                  // the second boy / the second girl (three feelings each)
+function faceOf(seat, emo) {
+  const p = pt();
+  if (p === "mm") return seat === "m" ? faces.m[EMO_M[emo]] : faces2.m[EMO_M2[emo]];
+  if (p === "ff") return seat === "m" ? faces.f[EMO_F[emo]] : faces2.f[EMO_F2[emo]];
+  return faces[seat][emo];
+}
+function actOf(seat, emo) { const p = pt(); return p === "mm" ? acts.m[EMO_M[emo]] : p === "ff" ? acts.f[EMO_F[emo]] : acts[seat][emo]; }
+const SAME_SCENE = { mm: { round: 2, out: 0, scene: 13 }, ff: { round: 3, out: 1, scene: 14 } };   // the only pages drawn so far for two boys / two girls
+function sceneFor(r, out) { const p = pt(r); if (p === "mf") return BOOK_SPREADS[r - 1][out]; const q = SAME_SCENE[p]; return (q && q.round === r && q.out === out) ? q.scene : 0; }   // 0 = not drawn yet -> a question mark
+const seatName = seat => { const p = pt(); return p === "mm" ? "boy" : p === "ff" ? "girl" : seat === "m" ? "boy" : "girl"; };
 let state = "opening";   // opening → intro → rps → dialog → merge (×4) → final → ending
 let round = 1, myChoice = null, sent = false, partnerChoice = null, partnerSent = false, history = [];
 let myKeep = null, partnerKeep = null, keptResult = null;
@@ -95,8 +116,10 @@ function preload() {
     pairsColour[k] = null;
     loadImage(src(`assets/colour/pair_${k}.png`), img => { pairsColour[k] = img; }, () => { pairsColour[k] = null; });
   }
+  for (const e of ["calm", "smile", "down"]) faces2.m[e] = loadImage(src(`assets/face_m2_${e}.png`));
+  for (const e of ["calm", "smile", "cry"]) faces2.f[e] = loadImage(src(`assets/face_f2_${e}.png`));
   for (const g of GESTURE_FILES) gestures.push(loadImage(src(`assets/gestures/${g}.png`)));
-  if (window.P1_LINES) lines = window.P1_LINES; else lines = loadJSON("lines.json?v=11");
+  if (window.P1_LINES) lines = window.P1_LINES; else lines = loadJSON("lines.json?v=13");
   opPreload();
 }
 
@@ -106,6 +129,8 @@ function setup() {
   makeBuffers();
   revealBuf = createGraphics(640, 640); mergeBuf = createGraphics(MW, MH); mergeBuf.pixelDensity(1);
   mosaicG = createGraphics(64, 64); mosaicG.pixelDensity(1);
+  { const q = createGraphics(MW, MH); q.pixelDensity(1); q.background(16); q.noFill(); q.stroke(255, 70); q.strokeWeight(2); q.rect(24, 24, MW - 48, MH - 48, 12);   // page 0: the page nobody has drawn yet
+    q.noStroke(); q.fill(235); q.textAlign(CENTER, CENTER); q.textFont(FONT_ADULT); q.textSize(280); q.text("?", MW / 2, MH / 2 - 6); bookImgs[0] = q; }
   try { JSON.parse(localStorage.getItem("p1_unlocked") || "[]").forEach(k => unlocked.add(k)); } catch (e) {}
   try { JSON.parse(localStorage.getItem("p1_pages") || "[]").forEach(n => pagesLit.add(n)); } catch (e) {}
   if (Q.get("book") === "all") for (const sp of BOOK_SPREADS) for (const n of sp) pagesLit.add(n);   // ?book=all demo: every page lit
@@ -143,14 +168,17 @@ const roundLine = () => (lines.round && lines.round[round - 1]) || "";
 function connect() {
   socket = io();
   socket.on("connect", () => { netMsg = "connected, joining room " + ROOM; socket.emit("join", { room: ROOM, as: Q.get("as") }); });
-  socket.on("role", d => { role = d.role; players = d.n; netMsg = `you are ${role === "m" ? "the boy" : "the girl"} · room ${ROOM}`; });
+  socket.on("role", d => { role = d.role; srvRole = d.role; players = d.n; netMsg = `room ${ROOM}`; });
+  socket.on("partner_pick", () => { pickTheirs = "?"; });
+  socket.on("picks", d => pickResolve(d[srvRole], d[srvRole === "m" ? "f" : "m"]));
   socket.on("players", d => { players = d.n; });
   socket.on("full", () => { netMsg = "room is full (two people already)"; });
   socket.on("partner_chose", d => { if (d.round === round) partnerSent = true; });
   socket.on("both", d => {                                        // 两只手都到了服务器:倒数还没完就先存着,倒数完一起亮
     if (d.round !== round || state !== "rps") return;
-    if (rpsPhase === "count" && (millis() - rpsT) / 1000 / FAST < T_COUNT) pendingBoth = { m: d.m, f: d.f };
-    else if (rpsPhase === "count") settleRps(d.m, d.f);
+    const dm = netSwap ? d.f : d.m, df = netSwap ? d.m : d.f;       // v3: if the two people picked the opposite of their server seats, swap the hands back
+    if (rpsPhase === "count" && (millis() - rpsT) / 1000 / FAST < T_COUNT) pendingBoth = { m: dm, f: df };
+    else if (rpsPhase === "count") settleRps(dm, df);
   });
   socket.on("partner_left", () => { players = 1; });
   socket.on("restart", () => { if (state === "ending") bookAgainStart(); else restart(); });
@@ -192,6 +220,7 @@ function draw() {
   if (state === "opening") { opDraw(); return; }
   if (trans) { drawTransition(); return; }
   if (state === "intro") drawIntro();
+  else if (state === "pick") drawPick();
   else if (state === "rps") drawRps(this);
   else if (state === "dialog") drawDialog(this);
   else if (state === "merge") drawMerge(this);
@@ -203,7 +232,19 @@ function draw() {
     const gs = gestureStable();
     if (gs === "scissors") { if (socket) socket.emit("restart"); bookAgainStart(); } else if (gs === "paper") leaveEnter();   // 11-08 v2:张手 = 留下记忆
   }
+  if (CAPS_ON) drawCap();
   drawCorner();
+}
+const CAPS_ON = !!Q.get("caps");
+function drawCap() {                                                          // v3 demo video: one small line at the top saying what was added after the crit
+  const C = lines.caps || {}; let t = "";
+  if (state === "pick") t = C.pick || "";
+  else if (["rps", "dialog", "merge"].includes(state) && pt() !== "mf") t = pt() === "mm" ? (C.mm || "") : (C.ff || "");
+  else if (state === "ending") t = C.book || "";
+  else if (state === "leave") t = C.leave || "";
+  if (!t) return;
+  push(); textFont("Georgia"); textSize(max(14, min(18, width / 70))); textAlign(LEFT, CENTER); const w = textWidth(t) + 32, y = 44;
+  noStroke(); fill(255, 220, 150, 235); rect(14, y - 15, w, 30, 15); fill(30); text(t, 30, y + 1); pop();
 }
 
 function drawCorner() {
@@ -234,10 +275,9 @@ let introStart = 0, introDone = false;
 const CPS = 28, LINE_GAP = 0.7;   // characters per second, pause between lines
 function introLines() {
   const base = (lines.intro && lines.intro.length) ? lines.intro.slice() : ["(intro lines go here)"];
-  if (lines.role && lines.role[role]) base.push(lines.role[role]);
   return base;
 }
-function startIntro() { state = "intro"; introStart = millis(); introDone = false; }
+function startIntro() { if (!(lines.intro && lines.intro.length)) { startPick(); return; } state = "intro"; introStart = millis(); introDone = false; }   // v3: no intro text -> straight to "Who were you?"
 function drawIntro() {
   const L = introLines();
   const t = (millis() - introStart) / 1000 / FAST;
@@ -257,9 +297,56 @@ function drawIntro() {
   pop();
   if (allDone && !introDone) { introDone = true; holdStart = millis(); }
   noStroke(); fill(60); textAlign(RIGHT, BOTTOM); textSize(12); text(introDone ? "click to begin" : "click to skip", width - 12, height - 8);
-  if (introDone && millis() - holdStart > S(2)) startRps();
+  if (introDone && millis() - holdStart > S(2)) startPick();
 }
-function introClick() { if (!introDone) { introStart = -1e9; } else startRps(); }
+function introClick() { if (!introDone) { introStart = -1e9; } else startPick(); }
+
+// ---------- v3: who were you? raise a hand on the left (a boy) or on the right (a girl) and hold it ----------
+let pickMine = null, pickTheirs = null, pickSide = null, pickSince = 0, pickDoneT = 0, pickNote = "";
+const T_PICK_HOLD = 1.5, T_PICK_AFTER = 1.8;
+function startPick() { state = "pick"; pickMine = null; pickTheirs = null; pickSide = null; pickSince = 0; pickDoneT = 0; pickNote = ""; gestNow = null; }
+function pickRects() { const d = min(height * 0.34, width * 0.22), y = height * 0.47; return { m: { x: width / 2 - d * 1.05, y, d }, f: { x: width / 2 + d * 1.05, y, d } }; }
+function pickChoose(who) {
+  if (pickMine) return; pickMine = who;
+  if (SOLO || !socket) pickResolve(who, who === "m" ? "f" : "m");            // one person: the computer is the other one
+  else socket.emit("pick", { who });
+}
+function pickResolve(mine, theirs) {                                         // both have chosen: decide the pair and my seat
+  pickMine = mine; pickTheirs = theirs;
+  if (mine !== theirs) { pairType = "mf"; role = mine; netSwap = !SOLO && role !== srvRole; pickNote = (lines.pickOther || "The other person is the {x}.").replace("{x}", theirs === "m" ? "boy" : "girl"); }
+  else { pairType = mine === "m" ? "mm" : "ff"; role = srvRole; netSwap = false; pickNote = mine === "m" ? (lines.pickTwoBoys || "Two boys, then.") : (lines.pickTwoGirls || "Two girls, then."); }
+  netMsg = `you are ${role === "m" ? (pairType === "ff" ? "a girl" : "the boy") : (pairType === "mm" ? "the other boy" : pairType === "ff" ? "the other girl" : "the girl")} · room ${ROOM}`;
+  pickDoneT = millis();
+}
+function pickClick() { const R = pickRects(); for (const k of ["m", "f"]) if (dist(mouseX, mouseY, R[k].x, R[k].y) < R[k].d / 2) pickChoose(k); }
+function drawPick() {
+  background(0); const R = pickRects();
+  if (!pickMine) {                                                           // which side is the hand on? (the camera picture is mirrored, so left is left)
+    let side = null;
+    if (CAM && hands.length && hands[0].wrist) { const x = hands[0].wrist.x; side = x < 640 * 0.42 ? "m" : x > 640 * 0.58 ? "f" : null; }
+    if (side !== pickSide) { pickSide = side; pickSince = millis(); }
+    if (side && (millis() - pickSince) / 1000 >= T_PICK_HOLD) pickChoose(side);
+  }
+  const hold = pickSide && !pickMine ? constrain((millis() - pickSince) / 1000 / T_PICK_HOLD, 0, 1) : 0;
+  push(); textFont(FONT_ADULT); textAlign(CENTER, CENTER); noStroke(); fill(235); textSize(max(24, min(40, width / 30)));
+  text(lines.pickTitle || "Who were you?", width / 2, height * 0.13); pop();
+  for (const k of ["m", "f"]) {
+    const b = R[k], chosen = pickMine === k, over = !pickMine && (pickSide === k || dist(mouseX, mouseY, b.x, b.y) < b.d / 2), dim = pickMine && !chosen;
+    push(); drawingContext.save(); drawingContext.beginPath(); drawingContext.arc(b.x, b.y, b.d / 2, 0, TWO_PI); drawingContext.clip();
+    noStroke(); fill(20); circle(b.x, b.y, b.d); imageMode(CENTER); tint(255, dim ? 70 : 255); image(faces[k].calm, b.x, b.y + b.d * 0.06, b.d * 1.1, b.d * 1.1); noTint(); drawingContext.restore();
+    noFill(); stroke(255, chosen ? 255 : over ? 200 : 90); strokeWeight(chosen ? 4 : 1.5); circle(b.x, b.y, b.d);
+    if (pickSide === k && hold > 0 && !pickMine) { stroke(255, 220, 150); strokeWeight(5); arc(b.x, b.y, b.d + 16, b.d + 16, -HALF_PI, -HALF_PI + TWO_PI * hold); }
+    pop();
+    push(); textFont(FONT_CHILD); noStroke(); fill(dim ? 90 : 220); textAlign(CENTER, CENTER); textSize(max(16, min(24, width / 50)));
+    text(k === "m" ? (lines.pickBoy || "a boy") : (lines.pickGirl || "a girl"), b.x, b.y + b.d / 2 + 30); pop();
+  }
+  push(); textFont(FONT_CHILD); noStroke(); textAlign(CENTER, CENTER); textSize(max(15, min(20, width / 60)));
+  if (!pickMine) { fill(160); text((CAM || CAPS_ON) ? (lines.pickHow || "Raise a hand on one side and hold it there.") : (lines.pickHowKeys || "Click one, or press B or G."), width / 2, height * 0.83); }
+  else if (!pickDoneT) { fill(160); text(lines.pickWait || "Waiting for the other person...", width / 2, height * 0.83); }
+  else { fill(255, 220, 150); text(pickNote, width / 2, height * 0.83); }
+  pop();
+  if (pickDoneT && (millis() - pickDoneT) / 1000 / FAST >= T_PICK_AFTER) startRps();
+}
 
 // ======================================================================================
 // v7 的中间(10-30 重写):一轮 = 猜拳 → 舞台 + 气泡(三句配音)→ 两个人滑到中间、碎片拼成这一页 → 字幕。四轮。
@@ -302,10 +389,10 @@ function sendChoice() {                                           // 我出了�
   if (socket) socket.emit("choose", { round, emo: myChoice });
 }
 function settleRps(m, f) {                                        // 两只手都到了:算结果 → 这一轮是哪一页 → 两人的心情
-  const out = rpsOutcome(m, f), scene = BOOK_SPREADS[round - 1][out];
+  const out = rpsOutcome(m, f), scene = sceneFor(round, out);
   const feel = out === 0 ? { m: "smile", f: "cry" } : out === 2 ? { m: "down", f: "smile" } : { m: "calm", f: "calm" };
   myChoice = role === "m" ? m : f; partnerChoice = role === "m" ? f : m;
-  history.push({ m: feel.m, f: feel.f, rps: { m, f }, out, scene, kept: true });
+  history.push({ m: feel.m, f: feel.f, rps: { m, f }, out, scene, pair: pt(), kept: true });
   rpsPhase = "show"; rpsT = millis();
 }
 function rpsFrames() {                                             // 左右两个摄像头框
@@ -348,7 +435,11 @@ function drawRps(g) {
     if (CAM && n <= 0 && !myChoice && !hands.length) { g.noStroke(); g.fill(255, 120, 100); g.textSize(14); g.text("no hand seen - put your hand in front of the camera", width / 2, fl.y + fl.h / 2 + 50); }
     if (live && sec >= deadline) {                                 // 倒数完:还没出手就随便出一只(单机对面也随机)
       if (!myChoice) { myChoice = random(RPS); sendChoice(); }
-      if (SOLO) { const other_ = random(RPS); settleRps(role === "m" ? myChoice : other_, role === "m" ? other_ : myChoice); }
+      if (SOLO) {
+        let other_ = random(RPS); const want = OUTS_Q ? OUTS_Q[round - 1] : undefined;                    // demo: the computer plays the hand that gives the wanted result
+        if (want === 0 || want === 1 || want === 2) other_ = RPS.find(o => rpsOutcome(role === "m" ? myChoice : o, role === "m" ? o : myChoice) === want) || other_;
+        settleRps(role === "m" ? myChoice : other_, role === "m" ? other_ : myChoice);
+      }
       else if (pendingBoth) { settleRps(pendingBoth.m, pendingBoth.f); }
     }
   } else {                                                         // show:两只手亮出来 + 中间结果字
@@ -381,12 +472,13 @@ function drawStage(g, k, alpha) {                                   // k=0 两�
   g.push(); g.imageMode(CENTER);
   for (const [r, x] of [["m", width / 2 - gapX], ["f", width / 2 + gapX]]) {
     const dim = spk && spk !== r; g.tint(255, (dim ? 120 : 255) * alpha);
-    g.image(acts[r][h[r]], x, cy, s, s);
+    const flip = (pt() === "ff" && r === "m") || (pt() === "mm" && r === "f");   // v3: two boys / two girls face each other
+    if (flip) { g.push(); g.translate(x, cy); g.scale(-1, 1); g.image(actOf(r, h[r]), 0, 0, s, s); g.pop(); } else g.image(actOf(r, h[r]), x, cy, s, s);
   }
   g.noTint(); g.pop();
 }
 function bubbleAvatar(g, who, x, y, d) {                            // 小头像:圆形里放脸
-  const h = lastH(), img = faces[who][h[who]];
+  const h = lastH(), img = faceOf(who, h[who]);
   g.push(); g.drawingContext.save(); g.drawingContext.beginPath(); g.drawingContext.arc(x, y, d / 2, 0, TWO_PI); g.drawingContext.clip();
   g.noStroke(); g.fill(20); g.circle(x, y, d); g.imageMode(CENTER); g.image(img, x, y + d * 0.06, d * 1.1, d * 1.1); g.drawingContext.restore();
   g.noFill(); g.stroke(255, 160); g.strokeWeight(1.2); g.circle(x, y, d); g.pop();
@@ -562,6 +654,7 @@ function mousePressed() {
   if (paused) return;
   if (state === "opening") { opGesture(); return; }
   if (state === "intro") { introClick(); return; }
+  if (state === "pick") { pickClick(); return; }
   if (trans) return;
   if (state === "rps" && rpsPhase === "count" && hoverIcon >= 0 && !myChoice) { myChoice = RPS[hoverIcon]; sendChoice(); }
   else if (state === "dialog" && !dlgDone) nextLine();                 // 点一下 = 这句跳过
@@ -584,6 +677,7 @@ function keyPressed() {
   if (state === "ending" && !bookOptionsOn() && !bookStay && !bookAgainT && !"rRcC".includes(key)) { bookSkip(); return; }
   if (state === "opening") { opGesture(); return; }
   if (state === "intro") { introClick(); return; }
+  if (state === "pick") { if (key === "b" || key === "B" || keyCode === LEFT_ARROW) pickChoose("m"); else if (key === "g" || key === "G" || keyCode === RIGHT_ARROW) pickChoose("f"); return; }
   if (key === "r" || key === "R") { if (socket) socket.emit("restart"); restart(); }
   if (key === "c" || key === "C") colourOn = !colourOn;
   if (trans) return;
@@ -863,7 +957,7 @@ let bookImgs = {}, bookStay = false, bookStayT = 0, bookAgainT = 0, bookAudio = 
 const T_BK_AGAIN = 3.0;   // again: music fades, screen fades to black, 3 s of silence, then back to the choosing screen (not the 46 s opening)
 function bookEnter() {
   gestNow = null; state = "ending"; holdStart = millis(); bookStay = false; bookAgainT = 0;
-  for (let i = 0; i < BOOK_SPREADS.length; i++) { const o = bookOutcome(i); if (o >= 0) pagesLit.add(BOOK_SPREADS[i][o]); }
+  for (let i = 0; i < BOOK_SPREADS.length; i++) { const o = bookOutcome(i); if (o >= 0 && history[i] && history[i].scene === BOOK_SPREADS[i][o]) pagesLit.add(BOOK_SPREADS[i][o]); }
   try { localStorage.setItem("p1_pages", JSON.stringify([...pagesLit])); } catch (e) {}
   if (!bookAudio) { bookAudio = new Audio(src("assets/audio/ending.mp3")); bookAudio.loop = true; bookAudio.preload = "auto"; }
   bookAudio.currentTime = 0; bookAudio.volume = 1; const pr = bookAudio.play(); if (pr && pr.catch) pr.catch(() => {});
@@ -873,7 +967,8 @@ function bookAgainStart() {
   if (bookAgainT) return; bookAgainT = millis();
   if (bookAudio && !bookAudio.paused) { const a = bookAudio; let v = a.volume; const id = setInterval(() => { v -= 0.05; if (v <= 0) { a.pause(); clearInterval(id); } else a.volume = v; }, 50); }
 }
-function bookPreload() { for (const sp of BOOK_SPREADS) for (const n of sp) { const k = String(n).padStart(2, "0"); loadImage(src(`assets/scenes/${k}.jpg`), img => { bookImgs[n] = img; }, () => { bookImgs[n] = null; }); } }
+function bookPreload() { for (const n of [13, 14]) loadImage(src(`assets/scenes/${n}.jpg`), img => { bookImgs[n] = img; }, () => { bookImgs[n] = null; });
+  for (const sp of BOOK_SPREADS) for (const n of sp) { const k = String(n).padStart(2, "0"); loadImage(src(`assets/scenes/${k}.jpg`), img => { bookImgs[n] = img; }, () => { bookImgs[n] = null; }); } }
 function bookOutcome(i) {   // 0 he wins / 1 draw / 2 she wins, from the feelings of that round; -1 = round not played
   const h = history[i]; if (!h) return -1;
   if (h.out !== undefined) return h.out;
@@ -905,7 +1000,8 @@ function bookPage(side, sp, x, w, full) {   // one page: cream paper + its slots
   const slots = side === 0 ? [[0, pw * 0.82, y0 + bh / 2]] : [[1, pw * 0.74, y0 + bh * 0.28], [2, pw * 0.74, y0 + bh * 0.72]];
   for (const [j, sw0, cy] of slots) {
     const sw = sw0 * sx, sh = sw0 * 9 / 16, cx = x + w / 2;
-    const n = scenes[j], img = bookImgs[n], filled = out === j || pagesLit.has(n);
+    const hh = history[sp], own = hh && out === j && hh.scene !== undefined && hh.scene !== scenes[j];   // v3: a two-boys / two-girls round shows its own page here
+    const n = own ? hh.scene : scenes[j], img = bookImgs[n], filled = out === j || pagesLit.has(n);
     push(); imageMode(CENTER);
     if (filled && img) image(img, cx, cy, sw, sh);
     else if (filled) { noStroke(); fill(205, 198, 182); rect(cx - sw / 2, cy - sh / 2, sw, sh); fill(120); textAlign(CENTER, CENTER); textSize(13 * sx); text(`page ${n}`, cx, cy); }
@@ -983,6 +1079,8 @@ function leaveEnter() {
   memInp.attribute("placeholder", lines.leaveHint || "one sentence is enough");
   memInp.value(""); memInp.show(); setTimeout(() => { if (state === "leave" && memInp) memInp.elt.focus(); }, 400);
   fetch("memories").then(r => r.json()).then(j => { memOthers = j.memories || []; }).catch(() => {});
+  const demo = Q.get("demotype");                                             // demo video: the sentence types itself, one letter at a time, then sends
+  if (demo) { let i = 0; const id = setInterval(() => { if (state !== "leave" || memSent) { clearInterval(id); return; } i++; memInp.value(demo.slice(0, i)); if (i >= demo.length) { clearInterval(id); setTimeout(() => { if (state === "leave") leaveSend(); }, 1400); } }, 85); }
 }
 function leaveRects() {
   const w = min(520, width * 0.6), x = width / 2 - w / 2, y = height * 0.46;
@@ -995,7 +1093,7 @@ function leaveSend() {
   if (memSent) return;
   const t = memInp.value().replace(/\s+/g, " ").trim(); if (!t) return;
   memSent = true; memInp.hide(); gestNow = null;
-  setTimeout(() => { if (state === "leave") endEnter(); }, 2600 * FAST);
+  setTimeout(() => { if (state === "leave") endEnter(); }, 5200 * FAST);
   fetch("memory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t, room: Q.get("room") || "", role }) }).catch(() => {});
   memOthers.unshift(t);
 }

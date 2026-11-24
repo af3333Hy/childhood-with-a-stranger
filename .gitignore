@@ -6,3 +6,5 @@ node_modules/
 启动本机服务器.bat
 .DS_Store
 memories.json
+server_local.log
+流程截图_v3/

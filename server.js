@@ -58,6 +58,14 @@ io.on("connection", socket => {
     if (c.m && c.f) io.to(roomName).emit("both", { round, m: c.m, f: c.f });
   });
 
+  socket.on("pick", data => {                                        // v3 (24 Nov): each person says who they were, a boy or a girl; when both have said, tell both
+    if (!roomName || !role) return;
+    const r = roomState(roomName); if (!r.picks) r.picks = {};
+    r.picks[role] = data && data.who === "f" ? "f" : "m";
+    socket.to(roomName).emit("partner_pick");
+    if (r.picks.m && r.picks.f) { io.to(roomName).emit("picks", { m: r.picks.m, f: r.picks.f }); console.log(roomName, "picks", r.picks); }
+  });
+
   socket.on("keep", data => {                                        // keep this memory? both must say yes
     if (!roomName || !role) return;
     const r = roomState(roomName);
@@ -86,7 +94,7 @@ io.on("connection", socket => {
     if (!roomName || !role) return;
     const r = roomState(roomName);
     if (r[role] === socket.id) r[role] = null;
-    r.choices = {}; r.keeps = {};
+    r.choices = {}; r.keeps = {}; r.picks = {};
     io.to(roomName).emit("players", { n: count(r) });
     io.to(roomName).emit("partner_left");
     if (count(r) === 0) delete rooms[roomName];

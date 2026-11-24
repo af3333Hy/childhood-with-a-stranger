@@ -321,6 +321,45 @@
     }
    ],
    "sub": "That afternoon, he played the mum."
+  },
+  "0": {
+   "lines": [],
+   "sub": "This page has not been drawn yet."
+  },
+  "13": {
+   "lines": [
+    {
+     "who": "m",
+     "en": "I won again!",
+     "voice": "13_01_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "...One more game.",
+     "voice": "13_02_f.mp3"
+    },
+    {
+     "who": "m",
+     "en": "The battery is nearly dead.",
+     "voice": "13_03_m.mp3"
+    }
+   ],
+   "sub": "That night, the only light came from two small screens."
+  },
+  "14": {
+   "lines": [
+    {
+     "who": "m",
+     "en": "Do you want half of mine?",
+     "voice": "14_01_m.mp3"
+    },
+    {
+     "who": "f",
+     "en": "Then you take half of mine.",
+     "voice": "14_02_f.mp3"
+    }
+   ],
+   "sub": "Nobody won that day. We just ate."
   }
  },
  "rps": {
@@ -344,7 +383,7 @@
  "leaveHint": "one sentence is enough",
  "leaveSend": "send",
  "leaveSkip": "skip",
- "leaveThanks": "Thank you. Your memory is kept. It will become a page for the next two strangers.",
+ "leaveThanks": "We have received your story. When a story fits, it will become a new page here.",
  "leaveSkipped": "That's fine. Thank you for playing.",
  "leaveBand": "",
  "end": "end",
@@ -353,5 +392,22 @@
  "endEmpty": "No one has left a page here yet.",
  "endAgain": "press R to play again",
  "endBand": "",
- "leave": "leave a memory"
+ "leave": "leave a memory",
+ "pickTitle": "Who were you?",
+ "pickBoy": "a boy",
+ "pickGirl": "a girl",
+ "pickHow": "Raise a hand on one side and hold it there.",
+ "pickHowKeys": "Click one, or press B or G.",
+ "pickWait": "Waiting for the other person...",
+ "pickOther": "The other person is the {x}.",
+ "pickTwoBoys": "Two boys, then.",
+ "pickTwoGirls": "Two girls, then.",
+ "_note_v3": "24 Nov: pick page + pages 0 (not drawn), 13 (two boys), 14 (two girls). The lines of 13 and 14 are placeholders for Yi Han to rewrite.",
+ "caps": {
+  "pick": "Added after the crit: you choose who you were, a boy or a girl.",
+  "mm": "Added after the crit: a round for two boys.",
+  "ff": "Added after the crit: a round for two girls.",
+  "book": "The book now keeps every pair: a boy and a girl, two boys, two girls.",
+  "leave": "Added after the tutor's feedback: players leave a memory of their own."
+ }
 }
